@@ -1,104 +1,114 @@
+// button_led.c
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
+#include <linux/spinlock.h>
+#include <linux/jiffies.h>
 
-int led_state = 0; 
-static irqreturn_t button_isr(int irq, void *dev_id, struct pt_regs *regs) 
-{ 
-	gpio_set_value(149, led_state); 
-    gpio_set_value(150, led_state = led_state > 0 ? 0 : 1); 
-	return IRQ_HANDLED; 
-} 
+#define LED0_GPIO    118 /* beagleboard::usr0 */
+#define LED1_GPIO    117 /* beagleboard::usr1 */
+#define BUTTON_GPIO  164 /* USER button */
 
-static struct gpio led_gpios [] = { 
-	{149, GPIOF_OUT_INIT_LOW, "USER LED 0" }, 
-	{150, GPIOF_OUT_INIT_LOW, "USER LED 1" }, 
-}; 
+static int led_state = 0;
+static unsigned long last_jiffies = 0;
 
-static int button_gpio= 4; /* USER BUTTON */ 
-static unsigned int button_irq; 
-static spinlock_t g_lock; 
+static struct gpio led_gpios[] = {
+    { LED0_GPIO, GPIOF_OUT_INIT_LOW, "USER LED 0" },
+    { LED1_GPIO, GPIOF_OUT_INIT_LOW, "USER LED 1" },
+};
 
-static int isr_test_init(void) 
-{ 
-	int ret, target_gpio; 
+static unsigned int button_irq;
+static spinlock_t g_lock;
 
-	if (gpio_is_valid(led_gpios[0].gpio) < 0) { 
-		printk (KERN_ERR "[CH08] USER LED 0 is not valid.\n") ; 
-		goto error; 
-	} 
+static irqreturn_t button_isr(int irq, void *dev_id)
+{
+    unsigned long flags;
 
-	if (gpio_is_valid(led_gpios[1].gpio) < 0) { 
-		printk (KERN_ERR "[CH08] USER LED 1 is not valid.\n"); 
-		goto error; 
-	} 
+    /* 아주 단순한 소프트웨어 디바운스: 50ms 이내 재진입 무시 */
+    if (time_before(jiffies, last_jiffies + msecs_to_jiffies(50)))
+        return IRQ_HANDLED;
+    last_jiffies = jiffies;
 
-	ret = gpio_request_one(button_gpio, GPIOF_IN, 
-		"LED status change button"); 
-	if (ret < 0) { 
-		printk (KERN_ERR "failed to request GPIO %d, error %d\n", 
-		button_gpio, ret) ; 
-		goto error; 
-	} 
+    spin_lock_irqsave(&g_lock, flags);
+    led_state = !led_state;
+    spin_unlock_irqrestore(&g_lock, flags);
 
-	ret = gpio_request_array(led_gpios, ARRAY_SIZE(led_gpios)); 
-	if (ret < 0) { 
-		printk (KERN_ERR "failed to request GPIO array for LEDs, error %d\n", 
-			ret); 
-		goto error; 
-	} 
+    gpio_set_value(LED1_GPIO, led_state);
+    gpio_set_value(LED0_GPIO, !led_state);
 
-	ret = gpio_direction_output(led_gpios[0].gpio, 0); 
-	if(ret < 0) { 
-		target_gpio = led_gpios[0].gpio; 
-		goto error_conf; 
-	} 
-	ret = gpio_direction_output(led_gpios[1].gpio, 0); 
-	if (ret < 0) { 
-		target_gpio = led_gpios[1].gpio; 
-		goto error_conf; 
-	} 
-	ret = gpio_direction_input(button_gpio); 
-	if (ret < 0) { 
-		target_gpio = button_gpio; 
-		goto error_conf; 
-	} 
-
-	// change button input to IRQ 
-	button_irq = gpio_to_irq(button_gpio); 
-	if (button_irq < 0) { 
-		printk(KERN_ERR "ISR test : Unable to get irq number for \ 
-			GPIO %d, error %d\n", button_gpio, button_irq) ; 
-		goto error; 
-	} 
-
-	/* dev_id should not be NULL if IRQF_SHARED is set */ 
-	ret = request_irq(button_irq, button_isr, 
-		IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING, 
-		"ISR-LED interrupt", NULL); 
-	if (ret) { 
-		printk (KERN_ERR "Unable to claim irq %d; error %d\n", 
-		button_irq, ret); 
-		return -EBUSY; 
-	} 
-
-	spin_lock_init(&g_lock); 
-	printk(KERN_ERR "Initializing ISR implementation for LEDs \ 
-		completed.\n"); 
-	return 0; 
-
-error_conf: 
-	printk(KERN_ERR "failed to configure direction for GPIO %d,\ 
-		error %d\n", target_gpio, ret); 
-
-error: 
-	return -EBUSY; 
-} 
-
-static void isr_test_exit(void)
-{ 
-	gpio_free(button_gpio); 
-	gpio_freearray(led_gpios, ARRAY_SIZE(led_gpios)); 
-	free_irq(button_irq, NULL); 
-
-	printk(KERN_ERR "Clearing ISR test setting completed.\n"); 
+    return IRQ_HANDLED;
 }
+
+static int __init button_led_init(void)
+{
+    int ret;
+
+    if (!gpio_is_valid(LED0_GPIO)) {
+        printk(KERN_ERR "button_led: USER LED 0 (GPIO %d) is not valid.\n", LED0_GPIO);
+        return -EINVAL;
+    }
+    if (!gpio_is_valid(LED1_GPIO)) {
+        printk(KERN_ERR "button_led: USER LED 1 (GPIO %d) is not valid.\n", LED1_GPIO);
+        return -EINVAL;
+    }
+    if (!gpio_is_valid(BUTTON_GPIO)) {
+        printk(KERN_ERR "button_led: USER BUTTON (GPIO %d) is not valid.\n", BUTTON_GPIO);
+        return -EINVAL;
+    }
+
+    spin_lock_init(&g_lock);
+
+    ret = gpio_request_array(led_gpios, ARRAY_SIZE(led_gpios));
+    if (ret < 0) {
+        printk(KERN_ERR "button_led: failed to request LED GPIO array, error %d\n", ret);
+        return ret;
+    }
+
+    ret = gpio_request_one(BUTTON_GPIO, GPIOF_IN, "LED status change button");
+    if (ret < 0) {
+        printk(KERN_ERR "button_led: failed to request GPIO %d, error %d\n", BUTTON_GPIO, ret);
+        goto err_free_leds;
+    }
+
+    button_irq = gpio_to_irq(BUTTON_GPIO);
+    if (button_irq < 0) {
+        printk(KERN_ERR "button_led: unable to get irq number for GPIO %d\n", BUTTON_GPIO);
+        ret = button_irq;
+        goto err_free_button;
+    }
+
+    ret = request_irq(button_irq, button_isr,
+                       IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+                       "button_led_irq", NULL);
+    if (ret) {
+        printk(KERN_ERR "button_led: unable to claim irq %d, error %d\n", button_irq, ret);
+        goto err_free_button;
+    }
+
+    printk(KERN_INFO "button_led: module loaded, LED0=%d LED1=%d BUTTON=%d IRQ=%d\n",
+           LED0_GPIO, LED1_GPIO, BUTTON_GPIO, button_irq);
+    return 0;
+
+err_free_button:
+    gpio_free(BUTTON_GPIO);
+err_free_leds:
+    gpio_free_array(led_gpios, ARRAY_SIZE(led_gpios));
+    return ret;
+}
+
+static void __exit button_led_exit(void)
+{
+    free_irq(button_irq, NULL);
+    gpio_free(BUTTON_GPIO);
+    gpio_free_array(led_gpios, ARRAY_SIZE(led_gpios));
+    printk(KERN_INFO "button_led: module unloaded\n");
+}
+
+module_init(button_led_init);
+module_exit(button_led_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("sdp");
+MODULE_DESCRIPTION("Interrupt-driven button/LED GPIO driver for BeagleBoard-xM");
