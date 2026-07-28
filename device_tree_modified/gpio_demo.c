@@ -8,11 +8,19 @@ struct gpio_demo_data {
 	struct gpio_desc *led[2];
 	struct gpio_desc *button;
 	int irq;
+	unsigned long last_jiffies;
 };
+
+#define DEBOUNCE_JIFFIES msecs_to_jiffies(50)
 
 static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
+	unsigned long now = jiffies;
+
+	if (time_before(now, data->last_jiffies + DEBOUNCE_JIFFIES))
+		return IRQ_HANDLED;
+
 	gpiod_set_value(data->led[0], !gpiod_get_value(data->led[0]));
 	gpiod_set_value(data->led[1], !gpiod_get_value(data->led[1]));
 	
@@ -51,7 +59,7 @@ static int gpio_demo_probe(struct platform_device *pdev)
 		return data->irq;
 
 	/* debounce (kernel internal if exists) */
-	gpiod_set_debounce(data->button, 50000); /* 50ms */
+	//gpiod_set_debounce(data->button, 50000); /* 50ms */
 	
 	ret = devm_request_threaded_irq(dev, data->irq, NULL, gpio_demo_isr,
 					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
