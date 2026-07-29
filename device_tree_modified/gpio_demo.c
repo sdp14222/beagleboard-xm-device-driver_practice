@@ -28,7 +28,6 @@ static void gpio_demo_debounce_work(struct work_struct *work)
 static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
-	unsigned long now = jiffies;
 
 	mod_delayed_work(system_wq, &data->debounce_work,
 				msecs_to_jiffies(DEBOUNCE_MS));
