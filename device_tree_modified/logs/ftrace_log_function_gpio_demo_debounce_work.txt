@@ -1,0 +1,18 @@
+# tracer: function
+#
+# entries-in-buffer/entries-written: 2/2   #P:1
+#
+#                                _-----=> irqs-off
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| /     delay
+#           TASK-PID     CPU#  ||||   TIMESTAMP  FUNCTION
+#              | |         |   ||||      |         |
+     kworker/0:2-418     [000] ....  1843.203552: gpio_demo_debounce_work <-process_one_work
+     kworker/0:2-418     [000] ....  1843.203583: <stack trace>
+ => process_one_work
+ => worker_thread
+ => kthread
+ => ret_from_fork
+ => 0
