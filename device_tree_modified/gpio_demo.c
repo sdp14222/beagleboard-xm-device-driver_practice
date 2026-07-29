@@ -3,28 +3,36 @@
 #include <linux/gpio/consumer.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
+#include <linux/workqueue.h>
+
+#define DEBOUNCE_MS 50
 
 struct gpio_demo_data {
 	struct gpio_desc *led[2];
 	struct gpio_desc *button;
 	int irq;
-	unsigned long last_jiffies;
+	struct delayed_work debounce_work;
 };
 
-#define DEBOUNCE_JIFFIES msecs_to_jiffies(50)
+static void gpio_demo_debounce_work(struct work_struct *work)
+{
+        struct gpio_demo_data *data = container_of(work, struct gpio_demo_data,
+                                                    debounce_work.work);
+
+        gpiod_set_value(data->led[0], !gpiod_get_value(data->led[0]));
+        gpiod_set_value(data->led[1], !gpiod_get_value(data->led[1]));
+
+        pr_info("gpio_demo: debounced, LEDs toggled\n");
+}
 
 static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
 	unsigned long now = jiffies;
 
-	if (time_before(now, data->last_jiffies + DEBOUNCE_JIFFIES))
-		return IRQ_HANDLED;
-
-	gpiod_set_value(data->led[0], !gpiod_get_value(data->led[0]));
-	gpiod_set_value(data->led[1], !gpiod_get_value(data->led[1]));
+	mod_delayed_work(system_wq, &data->debounce_work,
+				msecs_to_jiffies(DEBOUNCE_MS));
 	
-	pr_info("gpio_demo: button pressed, LEDs toggled\n");
 	return IRQ_HANDLED;
 }
 
@@ -58,8 +66,7 @@ static int gpio_demo_probe(struct platform_device *pdev)
 	if (data->irq < 0)
 		return data->irq;
 
-	/* debounce (kernel internal if exists) */
-	//gpiod_set_debounce(data->button, 50000); /* 50ms */
+	INIT_DELAYED_WORK(&data->debounce_work, gpio_demo_debounce_work);
 	
 	ret = devm_request_threaded_irq(dev, data->irq, NULL, gpio_demo_isr,
 					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
@@ -76,6 +83,8 @@ static int gpio_demo_probe(struct platform_device *pdev)
 static int gpio_demo_remove(struct platform_device *pdev)
 {
 	struct gpio_demo_data *data = platform_get_drvdata(pdev);
+
+	cancel_delayed_work_sync(&data->debounce_work);
 	
 	gpiod_set_value(data->led[0], 0);
 	gpiod_set_value(data->led[1], 0);
