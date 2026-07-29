@@ -1,0 +1,18 @@
+# tracer: function
+#
+# entries-in-buffer/entries-written: 2/2   #P:1
+#
+#                                _-----=> irqs-off
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| /     delay
+#           TASK-PID     CPU#  ||||   TIMESTAMP  FUNCTION
+#              | |         |   ||||      |         |
+ irq/179-gpio_de-376     [000] ....  1205.124573: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-376     [000] ....  1205.124603: <stack trace>
+ => irq_thread_fn
+ => irq_thread
+ => kthread
+ => ret_from_fork
+ => 0
