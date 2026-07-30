@@ -1,0 +1,31 @@
+# tracer: function
+#
+# entries-in-buffer/entries-written: 20/20   #P:1
+#
+#                                _-----=> irqs-off
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| /     delay
+#           TASK-PID     CPU#  ||||   TIMESTAMP  FUNCTION
+#              | |         |   ||||      |         |
+ irq/179-gpio_de-350     [000] ....   545.107422: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   545.409058: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   545.704407: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   545.998291: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   546.291107: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   546.584442: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   546.865417: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   547.160767: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   547.323029: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   547.468750: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   547.762726: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   548.062073: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   548.372589: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   548.669312: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   548.953217: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   549.261810: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   549.572998: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   549.887817: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   550.190277: gpio_demo_isr <-irq_thread_fn
+ irq/179-gpio_de-350     [000] ....   550.478088: gpio_demo_isr <-irq_thread_fn
