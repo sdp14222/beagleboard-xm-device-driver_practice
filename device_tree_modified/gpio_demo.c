@@ -7,7 +7,7 @@
 
 static int debounce_ms = 50;
 module_param(debounce_ms, int, 0644);
-MODULE_PARAM_DESC(debounce_ms, "Debounce time in milliseconds");
+MODULE_PARM_DESC(debounce_ms, "Debounce time in milliseconds");
 
 struct gpio_demo_data {
 	struct gpio_desc *led[2];
