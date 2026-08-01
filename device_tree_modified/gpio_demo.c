@@ -24,14 +24,15 @@ static void gpio_demo_debounce_work(struct work_struct *work)
         gpiod_set_value(data->led[0], !gpiod_get_value(data->led[0]));
         gpiod_set_value(data->led[1], !gpiod_get_value(data->led[1]));
 
-	trace_printk("EFFECTIVE_TOGGLE led0=%d\n", gpiod_get_value(data->led[0]));
 
         pr_info("gpio_demo: debounced, LEDs toggled\n");
 }
 
-static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
+static irqreturn_t gpio_demo_hard_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
+
+	trace_printk("gpio_demo_hard_isr enter\n");
 
 	mod_delayed_work(system_wq, &data->debounce_work,
 				msecs_to_jiffies(debounce_ms));
@@ -71,7 +72,7 @@ static int gpio_demo_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&data->debounce_work, gpio_demo_debounce_work);
 	
-	ret = devm_request_irq(dev, data->irq, gpio_demo_isr,
+	ret = devm_request_irq(dev, data->irq, gpio_demo_hard_isr,
 					IRQF_TRIGGER_RISING,
 					"gpio_demo_btn", data);
 
