@@ -13,6 +13,12 @@ struct gpio_demo_data {
 
 #define DEBOUNCE_JIFFIES msecs_to_jiffies(50)
 
+static irqreturn_t gpio_demo_hard_isr(int irq, void *dev_id)
+{
+	trace_printk("gpio_demo_hard_isr enter\n");
+	return IRQ_WAKE_THREAD;
+}
+
 static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
@@ -61,7 +67,7 @@ static int gpio_demo_probe(struct platform_device *pdev)
 	/* debounce (kernel internal if exists) */
 	//gpiod_set_debounce(data->button, 50000); /* 50ms */
 	
-	ret = devm_request_threaded_irq(dev, data->irq, NULL, gpio_demo_isr,
+	ret = devm_request_threaded_irq(dev, data->irq, gpio_demo_hard_isr, gpio_demo_isr,
 					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 					"gpio_demo_btn", data);
 
