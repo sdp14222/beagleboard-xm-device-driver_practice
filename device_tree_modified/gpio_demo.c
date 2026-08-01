@@ -19,7 +19,7 @@ static irqreturn_t gpio_demo_hard_isr(int irq, void *dev_id)
 	return IRQ_WAKE_THREAD;
 }
 
-static irqreturn_t gpio_demo_isr(int irq, void *dev_id)
+static irqreturn_t gpio_demo_threaded_isr(int irq, void *dev_id)
 {
 	struct gpio_demo_data *data = dev_id;
 	unsigned long now = jiffies;
@@ -67,7 +67,7 @@ static int gpio_demo_probe(struct platform_device *pdev)
 	/* debounce (kernel internal if exists) */
 	//gpiod_set_debounce(data->button, 50000); /* 50ms */
 	
-	ret = devm_request_threaded_irq(dev, data->irq, gpio_demo_hard_isr, gpio_demo_isr,
+	ret = devm_request_threaded_irq(dev, data->irq, gpio_demo_hard_isr, gpio_demo_threaded_isr,
 					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 					"gpio_demo_btn", data);
 
