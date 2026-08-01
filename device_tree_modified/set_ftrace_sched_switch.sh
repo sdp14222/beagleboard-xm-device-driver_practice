@@ -1,13 +1,4 @@
 #!/bin/sh
-    16	echo 1 > /sys/kernel/debug/tracing/events/sched/sched_switch/enable
-    17	echo "sched_switch enabled"
-    18	echo > /sys/kernel/debug/tracing/trace
-    19	sleep 1
-    20	
-    21	echo 1 > /sys/kernel/debug/tracing/tracing_on
-    22	echo "tracing_on"
-    23	
-
 
 echo 0 > /sys/kernel/debug/tracing/tracing_on
 sleep 1
